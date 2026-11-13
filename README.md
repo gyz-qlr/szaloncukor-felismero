@@ -1,0 +1,2 @@
+# szaloncukor
+Shümmer szaloncukor felismerő
