@@ -1,0 +1,15 @@
+{
+  "name": "Szaloncukor-felismerő",
+  "short_name": "Szaloncukor",
+  "description": "Szaloncukor felismerése a sztaniol színe alapján, AI nélkül.",
+  "lang": "hu",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#faf5ec",
+  "theme_color": "#8f1d23",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
