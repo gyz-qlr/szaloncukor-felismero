@@ -107,7 +107,7 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
 
 <div class="wrap">
   <section id="start" class="card">
-    <p class="lead">Fotózd le a szaloncukrot közelről, aztán koppints a <b>fehér papírvégre</b> és a <b>sztaniolra</b>.</p>
+    <p class="lead">Fotózd le a szaloncukrot közelről, koppints a <b>fehér papírvégre</b>, aztán húzz <b>keretet a sztaniolra</b>.</p>
     <label class="btn primary">📷 Fotó készítése<input type="file" accept="image/*" capture="environment" id="camInput" hidden></label>
     <label class="btn">🖼️ Választás a galériából<input type="file" accept="image/*" id="galInput" hidden></label>
     <p class="filterinfo" id="filterInfo"></p>
@@ -116,9 +116,8 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
       <ul>
         <li>Szórt fényben, vaku nélkül fotózz – a vaku csillogó foltot csinál a sztaniolon.</li>
         <li>A szaloncukor töltse ki a képet, a papírvég is látsszon.</li>
-        <li>Simítsd ki a sztaniolt; a csillogó és a nagyon sötét gyűrődést ne koppintsd.</li>
-        <li>Ha a sztaniolon más színű sáv vagy címke is van, arra is koppints – ez sokat segít.</li>
-        <li>Pontosabb koppintáshoz két ujjal nagyíthatod a képet.</li>
+        <li>A keretet a szaloncukor közepére húzd, a sávval/címkével együtt – a papírt és a csillogást magától kihagyja.</li>
+        <li>Ha jól ismerte fel, nyomd meg: „Ez az – megjegyzem”. Néhány ilyen után a te lámpáidhoz kalibrálja magát.</li>
         <li>A ⚙ Beállításokban bepipálhatod, mit rendeltetek – így csak azok közül keres.</li>
       </ul>
     </details>
@@ -152,9 +151,11 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
     <div class="actions"><button class="btn small" id="allBtn">Mind</button><button class="btn small" id="noneBtn">Egyik sem</button></div>
     <div id="flavourList"></div>
     <div class="grp">
-      <h3>Saját minták</h3>
-      <p style="margin:4px 0;font-size:14px" id="ownInfo"></p>
-      <button class="btn small" id="clearOwn">Saját minták törlése</button>
+      <h3>Tanulás ezen a telefonon</h3>
+      <p style="margin:4px 0;font-size:14px">Az „Ez az – megjegyzem” gomb elmenti a mérést. Ezekből az app a te lámpáidhoz és a telefonod színeihez igazítja magát.</p>
+      <p style="margin:8px 0;font-size:14px" id="ownInfo"></p>
+      <label><input type="checkbox" id="useCal" checked>Kalibráció használata</label>
+      <button class="btn small" id="clearOwn" style="margin-top:8px">Megerősítések törlése</button>
     </div>
   </div>
 </dialog>
