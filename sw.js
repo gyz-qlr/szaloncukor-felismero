@@ -1,8 +1,9 @@
 // Offline support: the app files come from the network when online (so fixes arrive at once) and from the
 // cache when offline; the stuhmer.hu photos and the fonts are cached as they are first shown.
-const APP = "szc-app-v2";
+const APP = "szc-app-v3";
 const EXT = "szc-ext-v1";
-const FILES = ["./", "index.html", "app.js", "match.js", "data.js", "manifest.webmanifest", "icon-180.png", "icon-512.png"];
+const FILES = ["./", "index.html", "app.js", "live.js", "match.js", "data.js", "template.js", "outline.png",
+  "manifest.webmanifest", "icon-180.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(APP).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));

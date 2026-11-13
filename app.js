@@ -1,4 +1,5 @@
-// Szaloncukor-felismerő: photo -> tap the paper -> frame (or tap) the foil -> white-balanced colours -> ranked flavours.
+// Szaloncukor-felismerő: shared parts (results, settings, learning) and the manual photo mode
+// (tap the paper, then frame or tap the foil). The live camera mode is in live.js.
 (function () {
   "use strict";
   const F = window.SZALONCUKROK;
@@ -22,28 +23,19 @@
   let allowed = store.get(ALLOWED_KEY, null); // null = all flavours
   let useCal = store.get(CAL_KEY, true);
   let cal = null;
-
-  // ---------- state ----------
-  const canvas = $("photo"), ctx = canvas.getContext("2d");
-  let source = null, pixels = null, radius = 8;
-  let taps = []; // {x, y, kind: "paper"|"foil", linear}; taps[0] is the paper
-  let area = null, profile = null; // framed rectangle and the wrapper colours found in it
-  let noBand = false, drag = null;
-
-  const STEPS = [
-    ["Koppints a fehér papírvégre", "Ebből igazítja a színeket a fényviszonyokhoz."],
-    ["Húzz keretet a sztaniolra", "Ujjal húzd át a szaloncukor közepét – a papírt és a csillogást kihagyja, a sávokat magától megtalálja. (Koppintás is jó a fő színre.)"],
-    ["Van más színű sáv vagy címke? Koppints rá", "Ha nincs, nyomd meg: „Nincs más színe”."],
-  ];
+  let lastRaw = null, lastSource = "manual";
 
   function show(id, on) { $(id).hidden = !on; }
+  function showSection(name) {
+    ["start", "live", "measure", "results"].forEach((s) => show(s, s === name || (name === "measure+results" && (s === "measure" || s === "results"))));
+    window.scrollTo({ top: 0 });
+  }
   function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2400); }
   function cssColor(lab) {
     const rgb = M.labToLinear(lab).map((v) => Math.round(255 * M.toSrgb(Math.max(0, Math.min(1, v)))));
     return `rgb(${rgb.join(",")})`;
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const done = () => !!profile || taps.length === 3 || (taps.length === 2 && noBand);
 
   // ---------- calibration ----------
   const ownCount = () => Object.values(own).reduce((s, v) => s + v.length, 0);
@@ -56,7 +48,82 @@
     return { samples: m.samples.map((s) => M.applyCalibration(cal, s)), noSecond: m.noSecond };
   }
 
-  // ---------- photo loading ----------
+  // ---------- results (both modes) ----------
+  const quality = (s) => (s < 8 ? ["good", "jó egyezés"] : s < 13 ? ["mid", "közepes"] : ["weak", "gyenge"]);
+  const sugarFree = (f) => f.note === "édesítőszerrel";
+  const fullName = (f) => f.name + (sugarFree(f) ? " (cukormentes)" : "");
+  const coatText = (f) => (f.coat === "nincs adat" ? "nincs adat" : f.coat);
+  const chip = (lab, label) => `<span class="chip"><i style="background:${cssColor(lab)}"></i>${label}</span>`;
+
+  function showResults(raw, meta = {}) {
+    lastRaw = raw; lastSource = meta.source || "manual";
+    const m = calibrate(raw);
+    const ranked = M.rank(F, m, { raw, own, allowed: allowed ? new Set(allowed) : undefined });
+    if (!ranked.length) { toast("Nincs bepipált íz a Beállításokban."); return; }
+    const conf = M.confidence(ranked);
+    const calNote = cal ? " · kalibrálva" : "";
+    const v = $("verdict");
+    v.className = "verdict " + conf;
+    v.innerHTML = conf === "high" ? `Szerintem ez: ${esc(fullName(ranked[0].flavour))}<small>Jó egyezés – azért nézd meg a fotót is.${calNote}</small>`
+      : conf === "medium" ? `Valószínű találatok<small>Hasonlítsd össze a szaloncukrot a lenti gyári fotókkal.${calNote}</small>`
+      : `Bizonytalan<small>Egyik szín sem stimmel igazán. Próbáld szórt fényben, nyugodtabban tartva – vagy nézd végig a jelölteket.${calNote}</small>`;
+
+    const measured = m.profile ? m.profile.map((c) => chip([c.L, c.a, c.b], `${Math.round(c.w * 100)}%`))
+      : m.samples.map((s, i) => chip(s, i === 0 ? "fő szín" : "sáv/címke"));
+    $("measured").innerHTML = `<span class="lbl">Mért színek${meta.frames ? ` (${meta.frames} kép átlaga)` : ""}:</span> ${measured.join("")}`;
+
+    $("hits").innerHTML = ranked.slice(0, 3).map((r, i) => {
+      const f = r.flavour, [cls, label] = quality(r.score);
+      return `<article class="hit">
+        <a class="hero" href="${esc(f.photo)}" target="_blank" rel="noopener"><img src="${esc(f.photo)}" style="object-position:50% ${f.photoY}%" alt="${esc(f.name)} – gyári fotó" loading="lazy" referrerpolicy="no-referrer"></a>
+        <div class="nm"><span class="rank">${i + 1}.</span>${esc(fullName(f))}${f.alcohol ? '<span class="alc" title="alkoholt tartalmaz">🍷 alkoholos</span>' : ""}<span class="tag ${cls}">${label}</span></div>
+        <dl class="props">
+          <dt>Ízvilág</dt><dd>${esc(f.profile)}</dd>
+          <dt>Fő ízek</dt><dd>${esc(f.main)}</dd>
+          <dt>Töltelék</dt><dd>${esc(f.texture)}</dd>
+          <dt>Bevonat</dt><dd>${esc(coatText(f))}</dd>
+          <dt>Csoport</dt><dd>${esc(f.group)}${f.note && !sugarFree(f) ? " · " + esc(f.note) : ""}${sugarFree(f) ? " · édesítőszerrel" : ""}</dd>
+        </dl>
+        <div class="cmp">Sztaniol a gyári fotón: ${f.colors.map((c) => `<i style="background:${cssColor([c.L, c.a, c.b])}"></i>`).join("")}</div>
+        <button class="btn small save" data-id="${f.id}">✓ Ez az – megjegyzem</button>
+      </article>`;
+    }).join("");
+    $("moreHits").innerHTML = ranked.slice(3, 12).map((r, i) => {
+      const f = r.flavour, [cls, label] = quality(r.score);
+      return `<div class="row"><img src="${esc(f.photo)}" style="object-position:50% ${f.photoY}%" alt="" loading="lazy" referrerpolicy="no-referrer"><span style="flex:1">${i + 4}. ${esc(fullName(f))}</span><span class="tag ${cls}">${label}</span><button class="btn small save" style="width:auto;padding:4px 10px" data-id="${f.id}">✓</button></div>`;
+    }).join("");
+    $("againBtn").textContent = lastSource === "live" ? "📷 Következő szaloncukor" : "Új fotó";
+    if (lastSource === "live") showSection("results");
+    else { show("results", true); $("results").scrollIntoView({ behavior: "smooth", block: "start" }); }
+  }
+
+  function saveOwn(id) {
+    if (!lastRaw) return;
+    const r1 = (v) => Math.round(v * 10) / 10;
+    const cols = lastRaw.profile ? lastRaw.profile.map((c) => ({ L: r1(c.L), a: r1(c.a), b: r1(c.b), w: Math.round(c.w * 100) / 100 }))
+      : lastRaw.samples.map((s) => ({ L: r1(s[0]), a: r1(s[1]), b: r1(s[2]), w: 1 / lastRaw.samples.length }));
+    (own[id] = own[id] || []).push({ cols });
+    store.set(OWN_KEY, own);
+    const before = !!cal;
+    refreshCalibration();
+    toast(!before && cal ? "Megjegyeztem – a kalibráció mostantól aktív." : "Megjegyeztem ezen a telefonon – legközelebb ezt is figyelembe veszem.");
+    updateOwnInfo();
+  }
+
+  // ---------- manual photo mode ----------
+  const canvas = $("photo"), ctx = canvas.getContext("2d");
+  let source = null, pixels = null, radius = 8;
+  let taps = []; // {x, y, kind: "paper"|"foil", linear}; taps[0] is the paper
+  let area = null, profile = null; // framed rectangle and the wrapper colours found in it
+  let noBand = false, drag = null;
+  const done = () => !!profile || taps.length === 3 || (taps.length === 2 && noBand);
+
+  const STEPS = [
+    ["Koppints a fehér papírvégre", "Ebből igazítja a színeket a fényviszonyokhoz."],
+    ["Húzz keretet a sztaniolra", "Ujjal húzd át a szaloncukor közepét – a papírt és a csillogást kihagyja, a sávokat magától megtalálja. (Koppintás is jó a fő színre.)"],
+    ["Van más színű sáv vagy címke? Koppints rá", "Ha nincs, nyomd meg: „Nincs más színe”."],
+  ];
+
   function onFile(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -79,12 +146,10 @@
     canvas.width = w; canvas.height = h;
     radius = Math.max(5, Math.round(Math.min(w, h) * 0.015));
     taps = []; area = null; profile = null; noBand = false;
-    show("start", false); show("measure", true); show("results", false);
+    showSection("measure");
     render();
-    $("measure").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // ---------- sampling ----------
   const linearAt = (i) => [M.LINEAR_8BIT[pixels.data[i]], M.LINEAR_8BIT[pixels.data[i + 1]], M.LINEAR_8BIT[pixels.data[i + 2]]];
 
   function sampleAt(x, y, kind) {
@@ -101,23 +166,24 @@
 
   function warn(msg, soft) { const w = $("warn"); w.textContent = msg; w.hidden = false; if (!soft) render(); }
 
+  const manualRaw = () => (profile ? { profile } : { samples: taps.slice(1).map((t) => M.correct(taps[0].linear, t.linear)), noSecond: noBand });
+
   function tap(x, y) {
     if (!pixels || done()) return;
     const kind = taps.length === 0 ? "paper" : "foil";
     const linear = sampleAt(x, y, kind);
     $("warn").hidden = true;
     if (kind === "paper") {
-      const lum = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
-      if (lum < 0.04) return warn("Ez túl sötét a papírhoz. Koppints a szaloncukor fehér papírvégére.");
+      if (lumOf(linear) < 0.04) return warn("Ez túl sötét a papírhoz. Koppints a szaloncukor fehér papírvégére.");
       if (Math.max(...linear) > 0.985) warn("A papír beégett (túl világos) – a mérés így is működik, de pontosabb, ha kevésbé erős fényben fotózol.", true);
-    } else {
-      const lab = M.correct(taps[0].linear, linear);
-      if (lab[0] > 90 && Math.hypot(lab[1], lab[2]) < 8) return warn("Ez a papírnak tűnik. Koppints a színes sztaniolra – vagy húzz keretet rá.");
+    } else if (M.isPaperLike(M.correct(taps[0].linear, linear))) {
+      return warn("Ez a papírnak tűnik. Koppints a színes sztaniolra – vagy húzz keretet rá.");
     }
     taps.push({ x, y, kind, linear });
     render();
-    if (done()) showResults();
+    if (done()) showResults(manualRaw());
   }
+  const lumOf = (p) => 0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2];
 
   function frame(r) {
     const x0 = Math.max(0, Math.min(r.x0, r.x1)), x1 = Math.min(pixels.width - 1, Math.max(r.x0, r.x1));
@@ -130,10 +196,9 @@
     if (!prof) { area = null; return warn("A keretben alig van színes sztaniol. Húzd a szaloncukor közepére, kicsit nagyobbra."); }
     area = { x0, y0, x1, y1 }; profile = prof;
     render();
-    showResults();
+    showResults(manualRaw());
   }
 
-  // ---------- drawing ----------
   function strokeRect(r, dashed) {
     const lw = Math.max(2, Math.round(canvas.width / 300));
     ctx.save();
@@ -170,20 +235,9 @@
     show("noBandBtn", taps.length === 2 && !noBand && !profile);
     // while framing, a drag on the photo must draw the frame instead of scrolling the page
     canvas.style.touchAction = taps.length >= 1 && !done() ? "none" : "manipulation";
-
-    const sw = [];
-    if (profile) {
-      calibrate({ profile }).profile.forEach((c) => sw.push(`<span class="chip"><i style="background:${cssColor([c.L, c.a, c.b])}"></i>${Math.round(c.w * 100)}%</span>`));
-    } else if (taps.length > 1) {
-      calibrate({ samples: taps.slice(1).map((t) => M.correct(taps[0].linear, t.linear)) }).samples
-        .forEach((lab, i) => sw.push(`<span class="chip"><i style="background:${cssColor(lab)}"></i>${i === 0 ? "fő szín" : "sáv/címke"}</span>`));
-    } else if (taps.length === 1) {
-      sw.push(`<span class="chip"><i style="background:#fff"></i>papír rögzítve</span>`);
-    }
-    $("swatches").innerHTML = sw.join("");
+    $("swatches").innerHTML = taps.length === 1 && !profile ? chip([94, 0, 0], "papír rögzítve") : "";
   }
 
-  // ---------- pointer: tap or drag ----------
   function toCanvas(e) {
     const r = canvas.getBoundingClientRect();
     return { x: Math.round((e.clientX - r.left) * canvas.width / r.width), y: Math.round((e.clientY - r.top) * canvas.height / r.height), scale: r.width / canvas.width };
@@ -210,63 +264,6 @@
   });
   canvas.addEventListener("pointercancel", () => { drag = null; render(); });
 
-  // ---------- results ----------
-  const quality = (s) => (s < 8 ? ["good", "jó egyezés"] : s < 13 ? ["mid", "közepes"] : ["weak", "gyenge"]);
-  const sugarFree = (f) => f.note === "édesítőszerrel";
-  const fullName = (f) => f.name + (sugarFree(f) ? " (cukormentes)" : "");
-  const coatText = (f) => (f.coat === "nincs adat" ? "bevonat: nincs adat" : `${f.coat} bevonat`);
-
-  function rawMeasurement() {
-    if (profile) return { profile };
-    return { samples: taps.slice(1).map((t) => M.correct(taps[0].linear, t.linear)), noSecond: noBand };
-  }
-
-  function showResults() {
-    const raw = rawMeasurement(), m = calibrate(raw);
-    const ranked = M.rank(F, m, { raw, own, allowed: allowed ? new Set(allowed) : undefined });
-    if (!ranked.length) { toast("Nincs bepipált íz a Beállításokban."); return; }
-    const conf = M.confidence(ranked);
-    const calNote = cal ? " · kalibrálva" : "";
-    const v = $("verdict");
-    v.className = "verdict " + conf;
-    v.innerHTML = conf === "high" ? `Szerintem ez: ${esc(fullName(ranked[0].flavour))}<small>Jó egyezés – azért nézd meg a fotót is.${calNote}</small>`
-      : conf === "medium" ? `Valószínű találatok<small>Hasonlítsd össze a sztaniolt a lenti fotókkal.${calNote}</small>`
-      : `Bizonytalan<small>Egyik szín sem stimmel igazán. Próbáld szórt fényben, nagyobb kerettel – vagy nézd végig a jelölteket.${calNote}</small>`;
-
-    const mainLab = m.profile ? [m.profile[0].L, m.profile[0].a, m.profile[0].b] : m.samples[0];
-    $("hits").innerHTML = ranked.slice(0, 3).map((r, i) => {
-      const f = r.flavour, [cls, label] = quality(r.score);
-      return `<article class="hit">
-        <a href="${esc(f.photo)}" target="_blank" rel="noopener"><img src="${esc(f.photo)}" style="object-position:50% ${f.photoY}%" alt="${esc(f.name)} – webshop-fotó" loading="lazy" referrerpolicy="no-referrer"></a>
-        <div>
-          <div class="nm"><span class="rank">${i + 1}.</span>${esc(fullName(f))}${f.alcohol ? '<span class="alc" title="alkoholt tartalmaz">🍷</span>' : ""}<span class="tag ${cls}">${label}</span></div>
-          <div class="meta">${esc(f.group)} · ${esc(coatText(f))}${f.note && !sugarFree(f) ? " · " + esc(f.note) : ""}</div>
-          <div class="taste">${esc(f.texture)} – ${esc(f.main)}</div>
-          <div class="cmp">mért <i style="background:${cssColor(mainLab)}"></i> webshop ${f.colors.map((c) => `<i style="background:${cssColor([c.L, c.a, c.b])}"></i>`).join("")}</div>
-          <button class="btn small save" data-id="${f.id}">✓ Ez az – megjegyzem</button>
-        </div></article>`;
-    }).join("");
-    $("moreHits").innerHTML = ranked.slice(3, 12).map((r, i) => {
-      const f = r.flavour, [cls, label] = quality(r.score);
-      return `<div class="row"><img src="${esc(f.photo)}" style="object-position:50% ${f.photoY}%" alt="" loading="lazy" referrerpolicy="no-referrer"><span style="flex:1">${i + 4}. ${esc(fullName(f))}</span><span class="tag ${cls}">${label}</span><button class="btn small save" style="width:auto;padding:4px 10px" data-id="${f.id}">✓</button></div>`;
-    }).join("");
-    show("results", true);
-    $("results").scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function saveOwn(id) {
-    const raw = rawMeasurement();
-    const r1 = (v) => Math.round(v * 10) / 10;
-    const cols = raw.profile ? raw.profile.map((c) => ({ L: r1(c.L), a: r1(c.a), b: r1(c.b), w: Math.round(c.w * 100) / 100 }))
-      : raw.samples.map((s) => ({ L: r1(s[0]), a: r1(s[1]), b: r1(s[2]), w: 1 / raw.samples.length }));
-    (own[id] = own[id] || []).push({ cols });
-    store.set(OWN_KEY, own);
-    const before = !!cal;
-    refreshCalibration();
-    toast(!before && cal ? "Megjegyeztem – a kalibráció mostantól aktív." : "Megjegyeztem ezen a telefonon – legközelebb ezt is figyelembe veszem.");
-    updateOwnInfo();
-  }
-
   // ---------- settings ----------
   function renderSettings() {
     const groups = [];
@@ -289,7 +286,7 @@
   function updateOwnInfo() {
     const n = ownCount(), k = Object.keys(own).length;
     const calText = !useCal ? "A kalibráció ki van kapcsolva."
-      : cal ? "A kalibráció aktív: ezekből igazítja a telefon és a lámpák színeit a webshop-fotókhoz."
+      : cal ? "A kalibráció aktív: ezekből igazítja a telefon és a lámpák színeit a gyári fotókhoz."
       : `A kalibrációhoz még ${Math.max(0, 3 - n)} megerősítés kell, legalább 2 különböző ízből.`;
     $("ownInfo").textContent = (n ? `${n} megerősített mérés ${k} ízhez. ` : "Még nincs megerősített mérés. ") + calText;
   }
@@ -297,19 +294,27 @@
   // ---------- events ----------
   $("camInput").addEventListener("change", onFile);
   $("galInput").addEventListener("change", onFile);
-  $("noBandBtn").addEventListener("click", () => { noBand = true; render(); showResults(); });
+  $("noBandBtn").addEventListener("click", () => { noBand = true; render(); showResults(manualRaw()); });
   $("undoBtn").addEventListener("click", () => {
     if (profile) { profile = null; area = null; }
     else if (noBand) noBand = false;
     else taps.pop();
     $("warn").hidden = true; show("results", false); render();
   });
-  const restart = () => { source = null; pixels = null; taps = []; area = null; profile = null; show("measure", false); show("results", false); show("start", true); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const restart = () => { source = null; pixels = null; taps = []; area = null; profile = null; showSection("start"); };
   $("newBtn").addEventListener("click", restart);
-  $("againBtn").addEventListener("click", restart);
+  $("againBtn").addEventListener("click", () => {
+    if (lastSource === "live" && api.onRestart) api.onRestart(true);
+    else restart();
+  });
+  $("homeBtn").addEventListener("click", restart);
   document.addEventListener("click", (e) => { const b = e.target.closest(".save"); if (b) saveOwn(Number(b.dataset.id)); });
   $("settingsBtn").addEventListener("click", () => { renderSettings(); $("settings").showModal ? $("settings").showModal() : $("settings").setAttribute("open", ""); });
-  $("closeSettings").addEventListener("click", () => { readSettings(); $("settings").close ? $("settings").close() : $("settings").removeAttribute("open"); if (done()) showResults(); });
+  $("closeSettings").addEventListener("click", () => {
+    readSettings();
+    $("settings").close ? $("settings").close() : $("settings").removeAttribute("open");
+    if (lastRaw && !$("results").hidden) showResults(lastRaw, { source: lastSource });
+  });
   $("allBtn").addEventListener("click", () => document.querySelectorAll("#flavourList input").forEach((i) => (i.checked = true)));
   $("noneBtn").addEventListener("click", () => document.querySelectorAll("#flavourList input").forEach((i) => (i.checked = false)));
   $("useCal").addEventListener("change", (e) => { useCal = e.target.checked; store.set(CAL_KEY, useCal); refreshCalibration(); updateOwnInfo(); });
@@ -318,6 +323,9 @@
   updateFilterInfo();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+
+  // shared with live.js
+  const api = window.SZC = { store, showSection, showResults, onRestart: null };
 
   // ---------- self-test: ?selftest=<id>[&mode=area] draws a synthetic candy under warm light and measures it ----------
   const params = new URLSearchParams(location.search), st = params.get("selftest");
@@ -335,6 +343,6 @@
     setPhoto(c, 900, 600);
     tap(150, 300);
     if (params.get("mode") === "area") frame({ x0: 250, y0: 190, x1: 640, y1: 410 });
-    else { tap(330, 300); if (band) tap(450, 300); else { noBand = true; render(); showResults(); } }
+    else { tap(330, 300); if (band) tap(450, 300); else { noBand = true; render(); showResults(manualRaw()); } }
   }
 })();

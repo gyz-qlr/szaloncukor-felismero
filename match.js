@@ -116,14 +116,16 @@
   // Colours of the wrapper inside the user's frame, with their share of the area. Same recipe as the
   // reference colours: paper, glints and the darkest shadow left out; the light and dark side of one foil
   // merged; small light-grey patches (paper of the next candy) dropped.
+  const isClipped = (p) => Math.max(p[0], p[1], p[2]) >= 0.985; // glint: the camera ran out of range
+  const isPaperLike = (c) => c[0] > 86 && Math.hypot(c[1], c[2]) < 8;
+
   function extractProfile(pixels, paper) {
-    const pts = [];
-    for (const p of pixels) {
-      if (Math.max(p[0], p[1], p[2]) >= 0.985) continue; // clipped glint
-      const c = correct(paper, p);
-      if (c[0] < 8 || (c[0] > 86 && Math.hypot(c[1], c[2]) < 8)) continue;
-      pts.push(c);
-    }
+    return profileFromLab(pixels.filter((p) => !isClipped(p)).map((p) => correct(paper, p)));
+  }
+
+  // Same, from colours already white-balanced (e.g. collected over several camera frames, each with its own paper).
+  function profileFromLab(labs) {
+    const pts = labs.filter((c) => c[0] >= 8 && !isPaperLike(c));
     if (pts.length < 150) return null;
     let cols = kmeans(pts, 4);
     for (let merged = true; merged;) {
@@ -279,7 +281,8 @@
   }
 
   const api = { PAPER_WHITE, LINEAR_8BIT, toLinear, toSrgb, linearToLab, labToLinear, deltaE, distinctColors, robustMean,
-    correct, extractProfile, scoreColors, scoreProfile, rank, confidence, fitCalibration, applyCalibration, calibrationPairs };
+    correct, isClipped, isPaperLike, extractProfile, profileFromLab, scoreColors, scoreProfile, rank, confidence,
+    fitCalibration, applyCalibration, calibrationPairs };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.Match = api;
 })(typeof window !== "undefined" ? window : globalThis);

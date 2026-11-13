@@ -7,6 +7,7 @@
 <meta name="description" content="Szaloncukor felismerése a sztaniol színe alapján, a stuhmer.hu fotóival. AI nélkül, a telefonon.">
 <meta name="theme-color" content="#8f1d23">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Szaloncukor">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -24,15 +25,15 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--cream); color: var(--ink); }
-body { font-family: "Noto Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; }
+body { font-family: "Noto Sans", system-ui, sans-serif; font-size: 16px; line-height: 1.45; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .wrap { max-width: 560px; margin: 0 auto; padding: 0 16px 32px; }
-header.top { position: relative; color: #fff; padding: calc(18px + env(safe-area-inset-top)) 20px 18px;
+header.top { position: relative; color: #fff; padding: calc(14px + env(safe-area-inset-top)) 20px 14px;
   background: radial-gradient(120% 140% at 0% 0%, #c4343a 0%, var(--red) 40%, var(--red-dk) 100%); }
 header.top::after { content: ""; position: absolute; inset: 6px; border: 1px solid rgba(217,187,122,.6); border-radius: 10px; pointer-events: none; }
 header .kicker { font-size: 11px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; color: var(--gold-lt); }
-header h1 { font-family: "Noto Serif", serif; font-weight: 500; font-size: 26px; margin: 2px 0 2px; line-height: 1.15; }
+header h1 { font-family: "Noto Serif", serif; font-weight: 500; font-size: 24px; margin: 2px 0 2px; line-height: 1.15; }
 header p { margin: 0; font-family: "Noto Serif", serif; font-style: italic; font-size: 14px; color: #f6e7cf; }
-#settingsBtn { position: absolute; right: 16px; top: calc(16px + env(safe-area-inset-top)); z-index: 1; width: 44px; height: 44px;
+#settingsBtn { position: absolute; right: 16px; top: calc(14px + env(safe-area-inset-top)); z-index: 1; width: 44px; height: 44px;
   border-radius: 50%; border: 1px solid rgba(217,187,122,.7); background: rgba(0,0,0,.15); color: #fff; font-size: 20px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-top: 16px; }
 .lead { margin: 0 0 14px; }
@@ -40,11 +41,42 @@ header p { margin: 0; font-family: "Noto Serif", serif; font-style: italic; font
   margin-top: 10px; border-radius: 12px; border: 1px solid var(--gold); background: #fff; color: var(--ink);
   font: 600 16px "Noto Sans", sans-serif; cursor: pointer; }
 .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.big { min-height: 60px; font-size: 18px; }
 .btn.small { min-height: 40px; font-size: 14px; margin-top: 0; }
+.manual { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.manual p { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.manual .actions .btn { margin-top: 0; }
 .filterinfo { font-size: 13px; color: var(--muted); margin: 12px 0 0; text-align: center; }
 details.tips { margin-top: 14px; font-size: 14px; color: var(--muted); }
 details.tips summary { cursor: pointer; color: var(--gold); font-weight: 600; }
 details.tips li { margin: 4px 0; }
+
+/* ---------- live camera ---------- */
+#live { margin-top: 12px; }
+.livebox { position: relative; margin: 0 auto; border-radius: 14px; overflow: hidden; background: #111; aspect-ratio: 941 / 1672;
+  width: min(100%, calc((100vh - 230px) * 941 / 1672)); width: min(100%, calc((100svh - 230px) * 941 / 1672)); }
+#liveVideo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tpl { position: absolute; filter: drop-shadow(0 0 2px rgba(0,0,0,.85)); pointer-events: none; }
+.tpl .outline { position: absolute; inset: 0; background: var(--ol, #fff);
+  -webkit-mask: url(outline.png) center / 100% 100% no-repeat; mask: url(outline.png) center / 100% 100% no-repeat; }
+.tpl .pz { position: absolute; border: 2px dashed rgba(110,180,255,.95); border-radius: 6px; background: rgba(110,180,255,.14); }
+.livebox.align .outline { --ol: #fff; animation: pulse 2.6s ease-in-out infinite; }
+.livebox.collect .outline { --ol: #ffd36b; animation: pulse 1.6s ease-in-out infinite; }
+.livebox.done .outline { --ol: #36e07c; animation: blink .28s steps(1, end) 5; }
+.livebox.done .pz { border-color: #36e07c; background: rgba(54,224,124,.15); }
+.livebox.error .outline { --ol: #ff8a80; animation: none; opacity: .7; }
+@keyframes pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: .1; } }
+.livestatus { max-width: 420px; margin: 10px auto 0; text-align: center; }
+.bar { height: 6px; border-radius: 3px; background: #eadfcb; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold), #36c06c); transition: width .15s; }
+#liveHint { margin: 8px 0 0; font-size: 14px; min-height: 2.9em; }
+.livectl { display: flex; gap: 8px; max-width: 420px; margin: 8px auto 0; align-items: center; }
+.livectl .btn { margin-top: 0; }
+.livectl .sz { flex: none; width: 48px; }
+.livectl span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* ---------- manual photo mode ---------- */
 .stepbar { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #fff6e2;
   border: 1px solid #ecd9a8; font-weight: 600; }
 .stepbar .num { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--gold); color: #fff; display: grid; place-items: center; font-size: 14px; }
@@ -53,34 +85,41 @@ details.tips li { margin: 4px 0; }
 canvas { display: block; width: 100%; height: auto; touch-action: manipulation; cursor: crosshair; }
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: #fff;
-  border: 1px solid var(--line); font-size: 13px; }
+  border: 1px solid var(--line); font-size: 13px; margin: 2px 4px 2px 0; }
 .chip i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
 .actions { display: flex; gap: 8px; margin-top: 10px; }
 .actions .btn { flex: 1; }
 .warn { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: #fdeceb; color: var(--bad); font-size: 14px; }
-.verdict { padding: 12px 14px; border-radius: 12px; font-weight: 600; margin-bottom: 12px; }
+
+/* ---------- results ---------- */
+.verdict { padding: 12px 14px; border-radius: 12px; font-weight: 600; margin-bottom: 10px; }
 .verdict small { display: block; font-weight: 400; color: var(--muted); }
 .verdict.high { background: #e8f4ec; color: var(--ok); }
 .verdict.medium { background: #fff6e2; color: var(--mid); }
 .verdict.low { background: #fdeceb; color: var(--bad); }
-h2 { font-family: "Noto Serif", serif; font-weight: 500; font-size: 20px; margin: 0 0 10px; }
-.hit { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
-.hit:first-of-type { border-top: 0; padding-top: 0; }
-.hit img { display: block; width: 112px; height: 60px; object-fit: cover; background: #fff; border-radius: 8px; border: 1px solid var(--line); }
-.hit .nm { font-family: "Noto Serif", serif; font-weight: 600; font-size: 18px; line-height: 1.2; }
-.hit .nm .rank { color: var(--gold); margin-right: 4px; }
-.hit .meta { font-size: 13px; color: var(--muted); margin-top: 2px; }
-.hit .taste { font-size: 13px; margin-top: 4px; }
-.hit .cmp { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 6px; }
-.hit .cmp i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
-.hit .save { margin-top: 8px; }
-.alc { color: var(--red); font-size: 13px; font-weight: 600; margin-left: 4px; white-space: nowrap; }
-.tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+#measured { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+#measured .lbl { margin-right: 4px; }
+h2 { font-family: "Noto Serif", serif; font-weight: 500; font-size: 20px; margin: 6px 0 4px; }
+.hit { padding: 14px 0 16px; border-top: 1px solid var(--line); }
+.hit:first-of-type { border-top: 0; }
+.hit .hero { display: block; }
+.hit .hero img { display: block; width: 100%; aspect-ratio: 15 / 8; object-fit: cover; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
+.hit .nm { font-family: "Noto Serif", serif; font-weight: 600; font-size: 22px; line-height: 1.2; margin-top: 10px; }
+.hit .nm .rank { color: var(--gold); margin-right: 6px; }
+dl.props { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 8px 0 0; font-size: 14px; }
+dl.props dt { color: var(--muted); }
+dl.props dd { margin: 0; }
+.hit .cmp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.hit .cmp i { width: 20px; height: 20px; border-radius: 5px; border: 1px solid rgba(0,0,0,.2); display: inline-block; }
+.hit .save { margin-top: 10px; }
+.alc { color: var(--red); font-family: "Noto Sans", sans-serif; font-size: 13px; font-weight: 600; margin-left: 8px; white-space: nowrap; }
+.tag { display: inline-block; font-family: "Noto Sans", sans-serif; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; margin-left: 8px; vertical-align: 3px; }
 .tag.good { background: #e8f4ec; color: var(--ok); } .tag.mid { background: #fff6e2; color: var(--mid); } .tag.weak { background: #f2ece6; color: var(--muted); }
-details.more { margin-top: 8px; }
+details.more { margin-top: 4px; }
 details.more summary { cursor: pointer; color: var(--gold); font-weight: 600; padding: 8px 0; }
 .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .row img { width: 64px; height: 34px; object-fit: cover; background: #fff; border-radius: 6px; border: 1px solid var(--line); }
+
 dialog { width: min(560px, calc(100vw - 24px)); max-height: 85vh; border: 0; border-radius: 16px; padding: 0; }
 dialog::backdrop { background: rgba(20,10,8,.45); }
 .dlg-head { position: sticky; top: 0; background: #fff; padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
@@ -107,20 +146,47 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
 
 <div class="wrap">
   <section id="start" class="card">
-    <p class="lead">Fotózd le a szaloncukrot közelről, koppints a <b>fehér papírvégre</b>, aztán húzz <b>keretet a sztaniolra</b>.</p>
-    <label class="btn primary">📷 Fotó készítése<input type="file" accept="image/*" capture="environment" id="camInput" hidden></label>
-    <label class="btn">🖼️ Választás a galériából<input type="file" accept="image/*" id="galInput" hidden></label>
+    <p class="lead">Tartsd a szaloncukrot a kamera elé úgy, hogy beleférjen a körvonalba, a fehér papírvégek pedig a kék sávokba essenek. A többit az app intézi.</p>
+    <button class="btn primary big" id="liveBtn">📷 Kamera indítása</button>
     <p class="filterinfo" id="filterInfo"></p>
     <details class="tips">
-      <summary>Tippek a jó fotóhoz</summary>
+      <summary>Tippek a jó felismeréshez</summary>
       <ul>
-        <li>Szórt fényben, vaku nélkül fotózz – a vaku csillogó foltot csinál a sztaniolon.</li>
-        <li>A szaloncukor töltse ki a képet, a papírvég is látsszon.</li>
-        <li>A keretet a szaloncukor közepére húzd, a sávval/címkével együtt – a papírt és a csillogást magától kihagyja.</li>
-        <li>Ha jól ismerte fel, nyomd meg: „Ez az – megjegyzem”. Néhány ilyen után a te lámpáidhoz kalibrálja magát.</li>
+        <li>Szórt fényben fotózz, ne erős, egy irányból jövő lámpánál.</li>
+        <li>Tartsd nyugodtan: amíg gyűjti a színeket, a körvonal sárgán pulzál, ha elég, zölden villog.</li>
+        <li>Ha a szaloncukor nem fér a körvonalba, a − / + gombbal egyszer állítsd be a sablon méretét.</li>
+        <li>Ha eltalálta, nyomd meg: „Ez az – megjegyzem”. Néhány ilyen után a te lámpáidhoz kalibrálja magát.</li>
         <li>A ⚙ Beállításokban bepipálhatod, mit rendeltetek – így csak azok közül keres.</li>
       </ul>
     </details>
+    <div class="manual">
+      <p>Nem indul a kamera? Kézi mód: fotó, majd koppintás a papírra és keret a sztaniolra.</p>
+      <div class="actions">
+        <label class="btn small">📷 Fotó<input type="file" accept="image/*" capture="environment" id="camInput" hidden></label>
+        <label class="btn small">🖼️ Galéria<input type="file" accept="image/*" id="galInput" hidden></label>
+      </div>
+    </div>
+  </section>
+
+  <section id="live" hidden>
+    <div class="livebox align" id="liveBox">
+      <video id="liveVideo" autoplay muted playsinline></video>
+      <div class="tpl" id="liveTpl">
+        <div class="outline"></div>
+        <div class="pz" id="pzTop"></div>
+        <div class="pz" id="pzBottom"></div>
+      </div>
+    </div>
+    <div class="livestatus">
+      <div class="bar"><i id="liveBar"></i></div>
+      <p id="liveHint" role="status"></p>
+    </div>
+    <div class="livectl">
+      <button class="btn small sz" id="tplSmaller" aria-label="Kisebb sablon">−</button>
+      <span>sablon mérete</span>
+      <button class="btn small sz" id="tplBigger" aria-label="Nagyobb sablon">+</button>
+      <button class="btn small" id="liveCancel">Mégse</button>
+    </div>
   </section>
 
   <section id="measure" class="card" hidden>
@@ -137,10 +203,12 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
 
   <section id="results" class="card" hidden>
     <div class="verdict" id="verdict"></div>
+    <div id="measured"></div>
     <h2>Legvalószínűbb ízek</h2>
     <div id="hits"></div>
     <details class="more"><summary>További jelöltek</summary><div id="moreHits"></div></details>
     <button class="btn primary" id="againBtn">📷 Következő szaloncukor</button>
+    <button class="btn" id="homeBtn">Kezdőlap</button>
   </section>
 </div>
 
@@ -161,10 +229,12 @@ footer { max-width: 560px; margin: 8px auto 0; padding: 0 16px calc(24px + env(s
 </dialog>
 
 <div class="toast" id="toast" role="status"></div>
-<footer>Nem hivatalos családi segédlet. A fotók a stuhmer.hu oldalról töltődnek be. A felismerés a telefonodon történik, a fotód nem kerül fel sehova.</footer>
+<footer>Nem hivatalos családi segédlet. A gyári fotók a stuhmer.hu oldalról töltődnek be. A felismerés a telefonodon történik, a kép nem kerül fel sehova.</footer>
 
 <script src="data.js"></script>
+<script src="template.js"></script>
 <script src="match.js"></script>
 <script src="app.js"></script>
+<script src="live.js"></script>
 </body>
 </html>
